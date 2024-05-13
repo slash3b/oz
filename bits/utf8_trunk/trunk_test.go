@@ -8,30 +8,37 @@ import (
 )
 
 func TestTrunk(t *testing.T) {
-    casesbytes, err := os.ReadFile("cases")
+    cases, err := os.ReadFile("cases")
     if err != nil{ fmt.Println(err); t.Fail(); return}
 
-    response, _ := os.Create("expected_")
+    expected, err := os.ReadFile("expected")
+    if err != nil{ fmt.Println(err); t.Fail(); return}
 
-    // prepare [][]byte
-    cases := bytes.Split(casesbytes, []byte{0x0a})
+    // strip last new line byte
     cases = cases[:len(cases)-1]
+    expected = expected[:len(cases)-1]
+    expected_ := bytes.Split(expected, []byte{0x0a})
 
-    for _, cas := range cases {
-        size := int(cas[0])
-        cas = cas[1:]
+    debug, _ := os.Create("debug")
+    defer debug.Sync(); defer debug.Close()
 
-        if size >= len(cas) {
-            response.Write(cas)
-            response.Write([]byte{0x0a})
+    for lnum, line := range bytes.Split(cases, []byte{0x0a}) {
+        size := int(line[0])
+        line = line[1:]
+
+        if size >= len(line) {
+            debug.Write(line); debug.Write([]byte{0x0a})
+            if !bytes.Equal(line, expected_[lnum]) { t.Fail(); return }
 
             continue
         }
 
+        // loop over line bytes to correctly truncate.
+
         i := 0
 
         for {
-            nums := f(cas[i])
+            nums := f(line[i])
 
             if i + nums > size {
                 break
@@ -40,14 +47,13 @@ func TestTrunk(t *testing.T) {
             i += nums
         }
 
-        response.Write(cas[:i])
-        response.Write([]byte{0x0a})
+        debug.Write(line[:i]); debug.Write([]byte{0x0a})
+        if !bytes.Equal(line[:i], expected_[lnum]) { t.Fail(); return }
     }
 
-    response.Sync()
-    response.Close()
 }
 
+// f tells you how many bytes to follow
 func f(b byte) int {
     switch b >> 4 {
 	case 0x0f:
