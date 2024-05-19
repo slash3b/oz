@@ -18,10 +18,10 @@ type BitmapFileHeader struct {
 	// IC: OS/2 struct icon
 	// PT: OS/2 pointer
 	Type               string
-	Size               int
+	Size               uint
 	Reserved1          []byte
 	Reserved2          []byte
-	PixelArrayStartIdx int
+	PixelArrayStartIdx uint
 }
 
 type CompressionMethod int
@@ -45,35 +45,60 @@ const (
 
 // DIBHeader of BITMAPINFOHEADER type.
 type DIBHeader struct {
-	Width  int
-	Height int
-	// ColorDepth means bits per pixel
-	ColorDepth int
+	Width  uint
+	Height uint
+	// ColorDepth means bits per pixel!
+	ColorDepth uint
 	// Compression
 	Compression CompressionMethod
+	ImageSize   uint
+}
+
+func tole(b []byte) uint {
+	var ans uint
+
+	for i := len(b) - 1; i >= 0; i-- {
+		ans |= uint(b[i]) // could have just sum it but lets use an OR :)
+
+		if i != 0 {
+			ans = ans << 8
+		}
+	}
+
+	return ans
 }
 
 func main() {
 	b, _ := os.ReadFile("image-rotate/teapot.bmp")
 
-	bmpHeader := BitmapFileHeader{
+	bmph := BitmapFileHeader{
 		Type:               string(b[:2]),
-		Size:               int(binary.LittleEndian.Uint32(b[2:7])),
+		Size:               tole(b[2:7]),
 		Reserved1:          b[7:9],
 		Reserved2:          b[8:10],
-		PixelArrayStartIdx: int(binary.LittleEndian.Uint16(b[10:13])),
+		PixelArrayStartIdx: tole(b[10:13]),
 	}
 
-	dibHeader := DIBHeader{
-		Width:      int(binary.LittleEndian.Uint16(b[18:22])),
-		Height:     int(binary.LittleEndian.Uint16(b[22:26])),
-		ColorDepth: int(binary.LittleEndian.Uint16(b[28:30])),
+	dibh := DIBHeader{
+		Width:       tole(b[18:22]),
+		Height:      tole(b[22:26]),
+		ColorDepth:  tole(b[28:30]),
 		Compression: CompressionMethod(binary.LittleEndian.Uint32(b[30:34])),
+		ImageSize:   tole(b[34:38]),
 	}
 
-    hb, _ := json.MarshalIndent(bmpHeader, " ", "")
+	fmt.Println("bmp header:")
+
+	hb, _ := json.MarshalIndent(bmph, " ", "")
 	fmt.Println(string(hb))
 
-    hb, _ = json.MarshalIndent(dibHeader, " ", "")
+	fmt.Println("dib header:")
+
+	hb, _ = json.MarshalIndent(dibh, " ", "")
 	fmt.Println(string(hb))
+
+	fmt.Println("pixel array starts", bmph.PixelArrayStartIdx)
+	fmt.Println("pixel array ends", bmph.PixelArrayStartIdx+dibh.ImageSize)
+
+	// fmt.Fprint(os.Stderr, b[bmph.PixelArrayStartIdx:dibh.ImageSize])
 }
