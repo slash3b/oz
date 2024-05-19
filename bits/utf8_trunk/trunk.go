@@ -42,13 +42,13 @@ func main() {
 // f tells you how many bytes to follow
 func f(b byte) int {
     switch b >> 4 {
-	case 0x0f:
+	case 0xf:
 		return 4
-	case 0x0e:
+	case 0x3:
 		return 3
 	}
 
-	if (b >> 5) == 0x06 {
+	if (b >> 5) == 0x6 {
 		return 2
 	}
 
