@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -76,14 +75,14 @@ func main() {
 		Size:               tole(b[2:7]),
 		Reserved1:          b[7:9],
 		Reserved2:          b[8:10],
-		PixelArrayStartIdx: tole(b[10:13]),
+		PixelArrayStartIdx: tole(b[10:14]),
 	}
 
 	dibh := DIBHeader{
 		Width:       tole(b[18:22]),
 		Height:      tole(b[22:26]),
 		ColorDepth:  tole(b[28:30]),
-		Compression: CompressionMethod(binary.LittleEndian.Uint32(b[30:34])),
+		Compression: CompressionMethod(tole(b[30:34])),
 		ImageSize:   tole(b[34:38]),
 	}
 
@@ -97,8 +96,16 @@ func main() {
 	hb, _ = json.MarshalIndent(dibh, " ", "")
 	fmt.Println(string(hb))
 
-	fmt.Println("pixel array starts", bmph.PixelArrayStartIdx)
-	fmt.Println("pixel array ends", bmph.PixelArrayStartIdx+dibh.ImageSize)
+	pxstart := bmph.PixelArrayStartIdx
+	pxend := bmph.PixelArrayStartIdx + dibh.ImageSize -1
 
-	// fmt.Fprint(os.Stderr, b[bmph.PixelArrayStartIdx:dibh.ImageSize])
+    for pxstart < pxend {
+        b[pxstart], b[pxend] = b[pxend], b[pxstart]
+
+        pxstart++
+        pxend--
+    }
+
+	os.WriteFile("image-rotate/teapot_.bmp", b, 0o600)
 }
+
