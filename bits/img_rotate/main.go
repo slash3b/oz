@@ -53,6 +53,7 @@ type DIBHeader struct {
 	ImageSize   uint
 }
 
+// tole does big endian to little endian.
 func tole(b []byte) uint {
 	var ans uint
 

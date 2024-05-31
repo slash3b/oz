@@ -1,0 +1,3 @@
+# command-line-arguments
+./main.go:99:15: undefined: a
+./main.go:100:14: undefined: a
