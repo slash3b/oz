@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -27,11 +28,11 @@ func main() {
 
 				h := b[i+1 : j-1]
 
-				r, g, b := conv(h)
+				rgb := conv(h)
 
-				s := fmt.Sprintf("rgb(%v %v %v);", r, g, b)
+				s := fmt.Sprintf("rgb(%s);", rgb)
 
-                c = append(c, []byte(s)...)
+				c = append(c, []byte(s)...)
 
 				break
 			}
@@ -67,10 +68,8 @@ var m = map[byte]byte{
 	0x66: 0xf,
 }
 
-func conv(c []byte) (byte, byte, byte) {
-	if len(c)%3 != 0 {
-		panic(fmt.Sprintf("invalid byte seq given: %x", c))
-	}
+func conv(c []byte) string {
+	c = []byte(strings.ToLower(string(c)))
 
 	for i := 0; i < len(c); i++ {
 		v, ok := m[c[i]]
@@ -82,10 +81,11 @@ func conv(c []byte) (byte, byte, byte) {
 	}
 
 	switch len(c) {
+	case 8:
+		return fmt.Sprintf("%v %v %v %v", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5], (c[6]<<4)|c[7])
 	case 6:
-		return (c[0] << 4) | c[1], (c[2] << 4) | c[3], (c[4] << 4) | c[5]
+		return fmt.Sprintf("%v %v %v", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5])
 	default:
-		return 0, 0, 0
+		return "0, 0, 0"
 	}
-
 }
