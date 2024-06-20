@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	b, err := os.ReadFile("./color-convert/simple.css")
+	b, err := os.ReadFile("./color-convert/advanced.css")
 	if err != nil {
 		panic(err)
 	}
@@ -15,24 +15,40 @@ func main() {
 	c := []byte{}
 
 	for i := 0; i < len(b); {
+		// skip comment line
+		if b[i] == byte('/') && b[i+1] == byte('*') {
+
+			for {
+				c = append(c, b[i])
+
+				if b[i] == byte('\n') {
+					i++
+					break
+				}
+
+				i++
+				continue
+			}
+		}
+
 		if b[i] != byte('#') {
 			c = append(c, b[i])
 			i++
 			continue
 		}
 
+		// found color hex notation
+
 		j := i + 1
 
+		// loop until we find semicolon
+
 		for {
-			if b[j] == byte('\n') {
+			if b[j] == byte(';') {
 
-				h := b[i+1 : j-1]
+				h := b[i+1 : j]
 
-				rgb := conv(h)
-
-				s := fmt.Sprintf("rgb(%s);", rgb)
-
-				c = append(c, []byte(s)...)
+				c = append(c, []byte(conv(h))...)
 
 				break
 			}
@@ -45,7 +61,7 @@ func main() {
 
 	fmt.Println(string(c))
 
-	os.WriteFile("./color-convert/simple_expected__.css", c, 0o644)
+	os.WriteFile("./color-convert/advanced_expected__.css", c, 0o644)
 }
 
 // ascii to byte
@@ -82,9 +98,13 @@ func conv(c []byte) string {
 
 	switch len(c) {
 	case 8:
-		return fmt.Sprintf("%v %v %v %v", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5], (c[6]<<4)|c[7])
+		return fmt.Sprintf("rgba(%v %v %v / %.5f)", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5], float64((c[6]<<4)|c[7])/0xff)
 	case 6:
-		return fmt.Sprintf("%v %v %v", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5])
+		return fmt.Sprintf("rgb(%v %v %v)", (c[0]<<4)|c[1], (c[2]<<4)|c[3], (c[4]<<4)|c[5])
+	case 4:
+		return fmt.Sprintf("rgba(%v %v %v / %.5f)", (c[0]<<4)|c[0], (c[1]<<4)|c[1], (c[2]<<4)|c[2], float64((c[3]<<4)|c[3])/0xff)
+	case 3:
+		return fmt.Sprintf("rgb(%v %v %v)", (c[0]<<4)|c[0], (c[1]<<4)|c[1], (c[2]<<4)|c[2])
 	default:
 		return "0, 0, 0"
 	}
