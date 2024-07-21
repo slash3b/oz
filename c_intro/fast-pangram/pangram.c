@@ -3,11 +3,30 @@
 #include <stdlib.h>
 
 bool ispangram(char *s) {
+      // printf("init: %s", s);
+
+    // res is our bitset!
     int res = 0;
 
-    char ch = 0;
+    /*
+    printf("------------------------------------\n");
+    for (char *p = s; ; p++) {
+        printf("%d ", *p);
 
-    for (char *p = s; *p > 0 ; p++) {
+        if (*p == 0) {
+            break;
+        }
+    }
+
+
+    printf("\n-------------------------------------\n");
+    */
+
+    char ch;
+    // int i;
+    for (char *p = s; *p != 0 ; p++) {
+        //printf("-- %d %d\n  ", i, *p);
+        //i++;
         // to lowercase
         // inspired by https://stackoverflow.com/a/2661917/3478120
         ch = *p > 0x40 && *p < 0x5b ? *p | 0x20 : *p;
@@ -17,7 +36,10 @@ bool ispangram(char *s) {
         }
   }
 
-  return res == 0b11111111111111111111111111;
+
+//  printf("debug: %b", res);
+
+  return res == 0x03ffffff; // 26 bits
 }
 
 int main() {
@@ -26,6 +48,7 @@ int main() {
   char *line = NULL;
 
   while ((read = getline(&line, &len, stdin)) != -1) {
+
     if (ispangram(line)) {
       printf("%s", line);
     }
