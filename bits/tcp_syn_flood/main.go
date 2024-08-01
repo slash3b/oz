@@ -185,47 +185,42 @@ func main() {
 	fileHeader := NewFileHeader(pcap[:24])
 	fileHeader.Print()
 
-	// points to first unread byte in slice
-	curr := 24
+    pcap = pcap[24:]
 
 	c := 0
 
-	for curr < len(pcap) {
+	for len(pcap) > 0 {
 		// per packet header
-		ph := NewPacketHeader(pcap[curr : curr+16])
-		curr += 16
+		ph := NewPacketHeader(pcap[:16])
+        pcap = pcap[16:]
 
 		ph.Print()
 
 		// protocol type description: https://www.tcpdump.org/linktypes/LINKTYPE_NULL.html
-		protocolType := littleEndianToUint32(pcap[curr : curr+4])
-		curr += 4
+		protocolType := littleEndianToUint32(pcap[:4])
+        pcap = pcap[4:]
+        ph.Len = ph.Len - 4 // minus 4 bytes we processed above, this is messy.
 
 		if protocolType != 2 {
 			panic(fmt.Sprintf("unexpected protocol type %d, expected 2 (IPv4)", protocolType))
 		}
 
-        // reslice to be used in this iteration
-        s := pcap[curr : curr+ph.Len]
-		curr += ph.Len-4 // minus 4 bytes we processed above, this is messy.
-
 		// IPv4 Header
-        ipheader := NewIPv4Header(s[:20])
-
-        // 
-
-        // payload
-        
-
+        ipheader := NewIPv4Header(pcap[:20])
 		ipheader.Print()
 
+        pcap = pcap[:20]
+
+
+        /*
         tcppacket := pcap[curr + 24 : curr+ph.Len]
         fmt.Printf("%#v\n", tcppacket)
 
         fmt.Println(littleEndianToUint16(tcppacket[:2]))
         fmt.Println(littleEndianToUint16(tcppacket[2:4]))
 
-        break
+        */
+
 
 
 		c++
