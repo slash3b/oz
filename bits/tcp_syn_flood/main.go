@@ -5,9 +5,10 @@ import (
 	"io"
 	"os"
 	"time"
+    "encoding/binary"
 )
 
-type TS_FORMAT uint32
+type TS_FORMAT uint
 
 func (t TS_FORMAT) String() string {
 	switch t {
@@ -25,7 +26,7 @@ const (
 	TS_SEC_AND_NANO
 )
 
-type LinkLayerType uint32
+type LinkLayerType uint
 
 const (
 	LINKTYPE_NULL LinkLayerType = iota
@@ -37,27 +38,27 @@ const (
 // https://www.ietf.org/archive/id/draft-gharris-opsawg-pcap-01.html
 // 24 octets
 type FileHeader struct {
-	Magic        uint32
-	MajorVersion uint16
-	MinorVersion uint16
+	Magic        uint
+	MajorVersion uint
+	MinorVersion uint
 	// TzOffset is always zero
-	TzOffset uint32
+	TzOffset uint
 	// TsAccurasy is a timestampe accuracy, always 0
-	TsAccuracy     uint32
-	SnapshotLength uint32
+	TsAccuracy     uint
+	SnapshotLength uint
 
 	LinkLayerHeaderType LinkLayerType
 }
 
 func NewFileHeader(src []byte) FileHeader {
 	return FileHeader{
-		Magic:               littleEndianToUint32(src[0:4]),
-		MajorVersion:        littleEndianToUint16(src[4:6]),
-		MinorVersion:        littleEndianToUint16(src[6:8]),
-		TzOffset:            littleEndianToUint32(src[8:12]),
-		TsAccuracy:          littleEndianToUint32(src[12:16]),
-		SnapshotLength:      littleEndianToUint32(src[16:20]),
-		LinkLayerHeaderType: LinkLayerType(littleEndianToUint32(src[20:24])),
+		Magic:               leToUint(src[0:4]),
+		MajorVersion:        leToUint(src[4:6]),
+		MinorVersion:        leToUint(src[6:8]),
+		TzOffset:            leToUint(src[8:12]),
+		TsAccuracy:          leToUint(src[12:16]),
+		SnapshotLength:      leToUint(src[16:20]),
+		LinkLayerHeaderType: LinkLayerType(leToUint(src[20:24])),
 	}
 }
 
@@ -84,18 +85,18 @@ func (fh FileHeader) Print() {
 
 // PacketHeader lenght is 16 octets
 type PacketHeader struct {
-	Timestamp   uint32
-	Tsmicronano uint32
-	Len         int // int instead of uint32 for simplicity and ergonomics -- easier to manage in a loop, no need to convert
+	Timestamp   uint
+	Tsmicronano uint
+	Len         int // int instead of uint for simplicity and ergonomics -- easier to manage in a loop, no need to convert
 	UntruncLen  int
 }
 
 func NewPacketHeader(src []byte) PacketHeader {
 	return PacketHeader{
-		Timestamp:   littleEndianToUint32(src[0:4]),
-		Tsmicronano: littleEndianToUint32(src[4:8]),
-		Len:         int(littleEndianToUint32(src[8:12])),
-		UntruncLen:  int(littleEndianToUint32(src[12:16])),
+		Timestamp:   leToUint(src[0:4]),
+		Tsmicronano: leToUint(src[4:8]),
+		Len:         int(leToUint(src[8:12])),
+		UntruncLen:  int(leToUint(src[12:16])),
 	}
 }
 
@@ -126,7 +127,7 @@ func NewIPv4Header(src []byte) IPv4Header {
 	h := IPv4Header{
 		Version:  int((src[0] & 0xf0) >> 4),
 		IHL:      int((src[0] & 0x0f) << 2),
-		TotalLen: int(littleEndianToUint16(src[2:4])),
+		TotalLen: int(leToUint(src[2:4])),
 		TTL:      int(src[8]),
 		Protocol: InternetProtocol(src[9]),
 	}
@@ -185,43 +186,41 @@ func main() {
 	fileHeader := NewFileHeader(pcap[:24])
 	fileHeader.Print()
 
-    pcap = pcap[24:]
+	pcap = pcap[24:]
 
 	c := 0
 
 	for len(pcap) > 0 {
 		// per packet header
 		ph := NewPacketHeader(pcap[:16])
-        pcap = pcap[16:]
+		pcap = pcap[16:]
 
 		ph.Print()
 
 		// protocol type description: https://www.tcpdump.org/linktypes/LINKTYPE_NULL.html
-		protocolType := littleEndianToUint32(pcap[:4])
-        pcap = pcap[4:]
-        ph.Len = ph.Len - 4 // minus 4 bytes we processed above, this is messy.
+		protocolType := leToUint(pcap[:4])
+		pcap = pcap[4:]
+		ph.Len = ph.Len - 4 // minus 4 bytes we processed above, this is messy.
 
 		if protocolType != 2 {
 			panic(fmt.Sprintf("unexpected protocol type %d, expected 2 (IPv4)", protocolType))
 		}
 
 		// IPv4 Header
-        ipheader := NewIPv4Header(pcap[:20])
+		ipheader := NewIPv4Header(pcap[:20]) // hardcoded to 20, no options, bad
 		ipheader.Print()
 
-        pcap = pcap[:20]
+		// tcp packet
+		tcppacket := pcap[20:ph.Len]
+		fmt.Printf("%#v\n", tcppacket)
 
+		fmt.Println(binary.BigEndian.Uint16(tcppacket[:2]))
+		fmt.Println(binary.BigEndian.Uint16(tcppacket[2:4]))
 
-        /*
-        tcppacket := pcap[curr + 24 : curr+ph.Len]
-        fmt.Printf("%#v\n", tcppacket)
+        return
 
-        fmt.Println(littleEndianToUint16(tcppacket[:2]))
-        fmt.Println(littleEndianToUint16(tcppacket[2:4]))
-
-        */
-
-
+		// finally truncate packet header
+		pcap = pcap[ph.Len:]
 
 		c++
 	}
@@ -229,32 +228,27 @@ func main() {
 	fmt.Println("total", c)
 }
 
-func littleEndianToUint32(src []byte) uint32 {
-	var res uint32
+// could have used package encoging/binary
+// binary.BigEndian and binary.LittleEndian
+// but I have to write it myself.
+
+func beToUint(src []byte) uint {
+	var res uint
+
+	for i, j := len(src)-1, 0; i >= 0; i, j = i-1, j+1 {
+		res |= uint(src[i]) << (8 * j)
+	}
+
+	return res
+}
+
+func leToUint(src []byte) uint {
+	var res uint
 
 	for i := 0; i < len(src); i++ {
-		res += uint32(src[i]) << (8 * i)
+		res |= uint(src[i]) << (8 * i)
 	}
 
 	return res
 }
 
-func littleEndianToUint16(src []byte) uint16 {
-	var res uint16
-
-	for i := 0; i < len(src); i++ {
-		res += uint16(src[i]) << (8 * i)
-	}
-
-	return res
-}
-
-func bigEndianToUint16(src []byte) uint16 {
-	var res uint16
-
-	for i := len(src)-1; i >= 0; i-- {
-		res += uint16(src[i]) << (8 * i)
-	}
-
-	return res
-}
