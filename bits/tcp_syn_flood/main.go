@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"time"
-    "encoding/binary"
 )
 
 type TS_FORMAT uint
@@ -161,7 +160,67 @@ const (
 	TCP
 )
 
-// todo: figure out what % of connections are ACKnowledged?
+type TCPSegmentHeader struct {
+	Srcport      uint
+	Dstport      uint
+	Seqnumber    uint
+	Acknumber    uint
+	Offsetnumber uint
+	Flags        uint
+}
+
+func NewTCPSegmentHeader(src []byte) TCPSegmentHeader {
+	return TCPSegmentHeader{
+		Srcport:      beToUint(src[:2]),
+		Dstport:      beToUint(src[2:4]),
+		Seqnumber:    beToUint(src[4:8]),
+		Acknumber:    beToUint(src[8:12]),
+		Offsetnumber: uint(src[12]) >> 4,
+		Flags:        uint(src[13]),
+	}
+}
+
+func (segh TCPSegmentHeader) Print() {
+	fmt.Println("TCP Segement Header:")
+	fmt.Printf("  segment   | source port: %d\n", segh.Srcport)
+	fmt.Printf("  segment   | destination port: %d\n", segh.Dstport)
+	fmt.Printf("  segment   | sequence number: %d\n", segh.Seqnumber)
+	fmt.Printf("  segment   | acknowledgement number: %d\n", segh.Seqnumber)
+	fmt.Printf("  segment   | offset number: %d\n", segh.Offsetnumber)
+	fmt.Printf("  segment   | flags set: %v\n", ListSetFlags(segh.Flags))
+}
+
+type TCPFlag uint
+
+var AllTCPFlags = []TCPFlag{CWR, ECE, URG, ACK, PSH, RST, SYN, FIN}
+
+const (
+	CWR TCPFlag = 1 << 7
+	ECE TCPFlag = 1 << 6
+	URG TCPFlag = 1 << 5
+	ACK TCPFlag = 1 << 4
+	PSH TCPFlag = 1 << 3
+	RST TCPFlag = 1 << 2
+	SYN TCPFlag = 1 << 1
+	FIN TCPFlag = 1 << 0
+)
+
+func (tcpf TCPFlag) Is(i uint) bool {
+	return i&uint(tcpf) > 0
+}
+
+func ListSetFlags(i uint) []string {
+	res := make([]string, 0, len(AllTCPFlags))
+
+	for _, flag := range AllTCPFlags {
+		if flag.Is(i) {
+			res = append(res, flag.String())
+		}
+	}
+
+	return res
+}
+
 func main() {
 	pcap := make([]byte, 0)
 
@@ -188,14 +247,18 @@ func main() {
 
 	pcap = pcap[24:]
 
-	c := 0
+	counter := 0
+
+	initiated := 0
+	acked := 0
 
 	for len(pcap) > 0 {
 		// per packet header
 		ph := NewPacketHeader(pcap[:16])
 		pcap = pcap[16:]
-
-		ph.Print()
+		if counter == 0 {
+			ph.Print()
+		}
 
 		// protocol type description: https://www.tcpdump.org/linktypes/LINKTYPE_NULL.html
 		protocolType := leToUint(pcap[:4])
@@ -208,24 +271,38 @@ func main() {
 
 		// IPv4 Header
 		ipheader := NewIPv4Header(pcap[:20]) // hardcoded to 20, no options, bad
-		ipheader.Print()
+		if counter == 0 {
+			ipheader.Print()
+		}
 
 		// tcp packet
-		tcppacket := pcap[20:ph.Len]
-		fmt.Printf("%#v\n", tcppacket)
+		tcp := NewTCPSegmentHeader(pcap[20:ph.Len])
+		if counter == 0 {
+			tcp.Print()
+		}
 
-		fmt.Println(binary.BigEndian.Uint16(tcppacket[:2]))
-		fmt.Println(binary.BigEndian.Uint16(tcppacket[2:4]))
+		fmt.Printf("src: %d -> dst: %d  %v\n", tcp.Srcport, tcp.Dstport, ListSetFlags(tcp.Flags))
+		if tcp.Dstport == 80 && SYN.Is(tcp.Flags) {
+			initiated++
+		}
 
-        return
+		if tcp.Srcport == 80 && ACK.Is(tcp.Flags) {
+			acked++
+		}
 
-		// finally truncate packet header
+		// finally truncate packet header length
 		pcap = pcap[ph.Len:]
 
-		c++
+		counter++
 	}
 
-	fmt.Println("total", c)
+	fmt.Println("----------------------------------")
+	fmt.Println("----------------------------------")
+	fmt.Println("total packets parsed", counter)
+	fmt.Println("total initiated connections", initiated)
+	fmt.Println("total acknowledged connections", acked)
+	fmt.Printf("total acknowledged connections %.2f%%\n", float64(acked)/float64(initiated)*100)
+
 }
 
 // could have used package encoging/binary
@@ -251,4 +328,3 @@ func leToUint(src []byte) uint {
 
 	return res
 }
-
