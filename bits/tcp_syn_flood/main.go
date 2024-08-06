@@ -86,7 +86,7 @@ func (fh FileHeader) Print() {
 type PacketHeader struct {
 	Timestamp   uint
 	Tsmicronano uint
-	Len         int // int instead of uint for simplicity and ergonomics -- easier to manage in a loop, no need to convert
+	Len         int
 	UntruncLen  int
 }
 

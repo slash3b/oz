@@ -1,40 +1,79 @@
 package main
 
 import (
-    "os"
-    "fmt"
-    "io/fs"
-    "log"
-    "encoding/binary"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 )
-/*
-plan:
-
-*/
 
 func main() {
-    dir := os.DirFS("varint")
+	args := os.Args
+	if len(args) == 1 {
+		return
+	}
 
-    fs.WalkDir(dir, ".",func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			log.Fatal(err)
-		}
+    fmt.Printf("150: %08b\n", 150)
 
-        if path == "." { return nil }
+	a, _ := strconv.ParseUint(args[1], 10, 64)
 
-        b, err := os.ReadFile("varint/"+path)
-        if err != nil {
-            fmt.Println("err", path, err)
+	res := encode(a)
 
-            panic(err)
-        }
+	fmt.Printf("result:\t%#x\n\t%08[1]b\n", res)
 
-        fmt.Printf("content %08b\n", b)
-        fmt.Printf("content %d\n", binary.BigEndian.Uint64(b))
+    res2 := decode(res)
 
+	fmt.Printf("result:\t%#x\n\t%08[1]b\n\t%[1]d\n", res2)
 
-		return nil
-	})
+	return
 
+	_, err := os.Stdout.Write(res)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
+func encode(src uint64) []byte {
+	if src == 0 {
+		return nil
+	}
+
+	var res []byte
+
+	for src > 0 {
+		r := src & 0x7f // 0x7f a.k.a. 0b01111111
+
+		src = src >> 7
+
+		res = append(res, byte(r))
+	}
+
+	if len(res) > 1 {
+		res[0] = res[0] | 0x80
+	}
+
+	return res
+}
+
+func decode( src []byte) uint {
+    var res uint
+
+    for i:= len(src)-1; i>=0; i-- {
+        res |= uint(src[i] & 0x7f) << uint(7*i)
+    }
+
+    return res
+}
+
+func prettyBytes(m string, src any) {
+	r := fmt.Sprintf("%064b", src)
+
+	res := []string{}
+
+	for i := 0; i < len(r); i += 8 {
+		res = append(res, string(r[i:i+8]))
+	}
+
+	fmt.Println(m, strings.Join(res, " "))
+}
