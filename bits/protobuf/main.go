@@ -13,17 +13,16 @@ func main() {
 		return
 	}
 
-    fmt.Printf("150: %08b\n", 150)
-
 	a, _ := strconv.ParseUint(args[1], 10, 64)
+	fmt.Println("incoming", a)
 
 	res := encode(a)
 
-	fmt.Printf("result:\t%#x\n\t%08[1]b\n", res)
+	fmt.Printf("encoded:\t%#x\n\t%08[1]b\n", res)
 
-    res2 := decode(res)
+	res2 := decode(res)
 
-	fmt.Printf("result:\t%#x\n\t%08[1]b\n\t%[1]d\n", res2)
+	fmt.Printf("decoded:\t%#x\n\t%08[1]b\n\t%[1]d\n", res2)
 
 	return
 
@@ -56,14 +55,14 @@ func encode(src uint64) []byte {
 	return res
 }
 
-func decode( src []byte) uint {
-    var res uint
+func decode(src []byte) uint {
+	var res uint
 
-    for i:= len(src)-1; i>=0; i-- {
-        res |= uint(src[i] & 0x7f) << uint(7*i)
-    }
+	for i := len(src) - 1; i >= 0; i-- {
+		res |= uint(src[i]&0x7f) << uint(7*i)
+	}
 
-    return res
+	return res
 }
 
 func prettyBytes(m string, src any) {
