@@ -1,61 +1,64 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
+    "math"
 )
 
 func main() {
 
-    // encode("hello")
-    encode("bye")
+	// encode("hello")
+	encode("bye")
 }
 
-func encode(s string) uint {
+func encode(s string) float64 {
 
-    fmt.Printf("input %s %#x\n", s, []byte(s))
+	fmt.Printf("input %s %#x\n", s, []byte(s))
 
-    if len(s) > 6 {
-        return 0
-    }
+	if len(s) > 6 {
+		return 0
+	}
 
-    var c uint
+	var c uint
 
-    c |= 0x7f_f0_00_00_00_00_00_00 // set 11 bits on
-    c |= 0x00_08_00_00_00_00_00_00 // set 1 bit permanently
+	c |= 0x7f_f0_00_00_00_00_00_00 // set 11 bits on
+	c |= 0x00_08_00_00_00_00_00_00 // set 1 bit permanently
 
-    fmt.Printf("%064b\n", c)
+	fmt.Printf("%064b\n", c)
 
-    fmt.Println("len is:", len(s))
+	fmt.Println("len is:", len(s))
 
-    c |= uint(len(s))<<48
+	c |= uint(len(s)) << 48
 
-    if len(s) > 6 {
-        return 0
-    }
+	if len(s) > 6 {
+		return 0
+	}
 
-    for i:= 0; i < len(s); i++ {
-        c |= uint(s[i]) << uint(8*i)
-    }
+	for i := 0; i < len(s); i++ {
+		c |= uint(s[i]) << uint(8*i)
+	}
 
-    fmt.Printf("encoded: %#x\n", c)
+	fmt.Printf("encoded: %#x\n", c)
 
-    fmt.Println("reverting")
+	fmt.Println("reverting")
 
-    res := []byte{}
+	res := []byte{}
 
-    for i:= 0; i < 6; i++ {
-        // mask out particular byte
-        b := c & uint(0xff << (8 * i))
+	encodedlen := int(c & (0x07 << 48) >> 48)
 
-        // shift it back
-        b >>= (8*i)
+	for i := 0; i < encodedlen; i++ {
+		// mask out particular byte
+		b := c & uint(0xff<<(8*i))
 
-        fmt.Printf(">>>> %T %#[1]v\n", b)
+		// shift it back
+		b >>= (8 * i)
 
-        res = append(res, byte(b))
-    }
+		fmt.Printf(">>>> %T %#[1]v\n", b)
 
-    fmt.Printf("reverted %s\n", string(res))
+		res = append(res, byte(b))
+	}
 
-    return c
+	fmt.Printf("reverted %s\n", string(res))
+
+	return c
 }
