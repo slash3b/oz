@@ -5,9 +5,8 @@ in
 
 pkgs.mkShell {
   packages = with pkgs; [
-    cowsay
-    lolcat
     nasm
+    lldb
   ];
 
     shellHook = ''
