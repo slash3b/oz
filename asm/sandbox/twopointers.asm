@@ -6,22 +6,22 @@ section .text
 global _start
 
 _start:
-    mov ebx, msg
-    mov eax, msg
+    mov ebx, msg ; ebx points to first byte in msg
+    mov eax, msg ; eax points to first byte in msg
 
 
 ; so these "labels" do not mean anything, except a point we can jump to under a specific conditions.
 nextchar:
-    cmp byte [eax], 0 ; compare
-    jz finished
-    inc eax
-    jmp nextchar
+    cmp byte [eax], 0 ; compares and throws away result, but fills in "flags", for example it fills in ZF "zero flag" 
+    jz finished ; contidional jump "jump zero", does jump when cmp fills in ZF to 0.
+    inc eax ; increment eax
+    jmp nextchar ; jump back to nextchar label
 
 finished:
-    sub eax, ebx
+    sub eax, ebx ; subtracts eax from ebx, keep result in eax
 
     ; print message
-    mov edx, eax
+    mov edx, eax ; num of bytes to print
     mov ecx, msg ; msg
     mov ebx, 1 ; 1 is stdout
     mov eax, 4 ; sys_write
