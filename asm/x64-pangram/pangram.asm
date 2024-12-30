@@ -10,62 +10,58 @@ global pangram
 pangram:
     ; rax contains the anaswer, 1 or 0.
     xor rax, rax
-    ; rbx contains the bit set.
-    xor rbx, rbx
+    ; rdx contains the bit set.
+    xor rdx, rdx
 
 .loop:
-    movzx rbx, byte [rdi]
+    movzx rcx, byte [rdi]
 
     ; if we have read 0 (null), break
-    cmp rbx, 0
+    cmp rcx, 0x0
     je .end
 
-    ; hacky way to lowercase
-    cmp rbx, 'a' ; 0x60 is "`", right before "a"
+    inc rdi ; safe to increment rdi
+
+    ; way to lowercase
+    cmp rcx, 'a' ; 0x60 is "`", right before "a"
     jl .tolowercase
 
     ; if less than 'a' -- continue
-    cmp rbx, 'a'
-    inc rdi
-    jl .loop
+    ; cmp rcx, 0x61
+    ; jl .loop
 
     ; if greater than 'z' -- continue
-    cmp rbx, 'z'
-    inc rdi
-    jg .loop
+    ; cmp rcx, 0x7a
+    ; jg .loop
 
-    sub rbx, 0x61
-    xor rcx, rcx
-    mov rcx, 1
-    ;"bl" are lower bits from rbx 
-    ; immediately accessible
-    ;
-    ; 8 bits : AH AL BH BL CH CL DH DL
-    ; the "H" and "L" suffix on the 8 bit registers 
-    ; stand for high byte and low byte
-    ; mov rax, rbx
-    mov bl, [rbx]
-    shl rcx, bl ; e.g. 1 << 1 for 'b'. 
+    sub rcx, 0x61
+    xor r8, r8
+    mov r8, 1
+    shl r8, cl
+    or rdx, r8
+    ; bts rdx, rcx
 
-
-    ; actual writing to rax
-    or rax, rcx
-
-    inc rdi
     jmp .loop
 
 .tolowercase:
-    add rbx, 0x20
-    ret
+        add rcx, 0x20
 
 .end:
-    cmp rax, 0x03ffffff
-    mov rax, 0
-    je .itispangram
+    mov rax, rdx
+    ;cmp rdx, 0x03ffffff
+    ;je .ispangram
+
+
+    ; mov rax, 42
+    ;cmp rax, 0x03ffffff ; 26 bits
+    ; 3ffffff or 67108863 | 26 bits
+
+    ;je .itispangram
+    ;jl .nullify
 
 	ret
 
-.itispangram:
-    mov rax, 1
+.ispangram:
+   mov rax, 1
+   ret
 
-    ret
