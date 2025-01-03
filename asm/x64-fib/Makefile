@@ -1,12 +1,7 @@
 AS = nasm
 
-CFLAGS = -g -Wall -arch x86_64
-
-ifeq ($(shell uname -s),Darwin)
-	ASFLAGS = -g -f macho64 --prefix _
-else
-	ASFLAGS = -g -f elf64
-endif
+CFLAGS = -g -Wall 
+ASFLAGS = -g -f elf64
 
 C_OBJS = $(patsubst %.c,%.o,$(wildcard *.c))
 AS_OBJS = $(patsubst %.asm,%.o,$(wildcard *.asm))
